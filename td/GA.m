@@ -1,16 +1,25 @@
-function r = GA(b,c,D,popSize,maxGen,seed,Pmin,Pmax,extraLimit,outputFcn)
+function r = GA(b,c,D,popSize,maxGen,seed,...
+                Pmin,Pmax,extraLimit,outputFcn)
 % GA
-% Resolve o despacho economico usando o algoritmo genetico.
+% Resolve o despacho económico utilizando o algoritmo
+% genético do MATLAB.
+%
+% Entradas:
+%   b            Coeficientes lineares.
+%   c            Coeficientes quadráticos.
+%   D            Carga total.
+%   popSize      Tamanho da população.
+%   maxGen       Número máximo de gerações.
+%   seed         Semente de aleatoriedade.
+%   Pmin         Limites mínimos.
+%   Pmax         Limites máximos.
+%   extraLimit   Restrição adicional do T2.
+%   outputFcn    Função para registar convergência.
+%
+% Saída:
+%   r            Estrutura com resultados.
 
-%% Garantir que os vetores sao linhas
-
-b = b(:)';
-c = c(:)';
-
-Pmin = Pmin(:)';
-Pmax = Pmax(:)';
-
-%% Valores opcionais
+%% Argumentos opcionais
 
 if nargin < 9
     extraLimit = [];
@@ -20,7 +29,7 @@ if nargin < 10
     outputFcn = [];
 end
 
-%% Limites
+%% Limites do problema
 
 ub = Pmax;
 
@@ -33,40 +42,38 @@ if ~isempty(extraLimit)
 
 end
 
-%% Validacao
-
-if sum(Pmin) > D
-    error('A carga e inferior a potencia minima total.');
-end
-
-if sum(ub) < D
-    error('A carga nao pode ser satisfeita com estes limites.');
-end
-
-%% Funcao de custo
+%% Função objetivo
 
 fcusto = @(P) sum(b.*P + c.*P.^2,2);
 
-%% Opcoes
+%% Opções do algoritmo genético
 
 opts = optimoptions('ga', ...
-    'PopulationSize',popSize, ...
-    'MaxGenerations',maxGen, ...
+    'PopulationSize',popSize,...
+    'MaxGenerations',maxGen,...
     'Display','off');
 
 if ~isempty(outputFcn)
-    opts.OutputFcn = outputFcn;
+
+    opts = optimoptions( ...
+        opts,...
+        'OutputFcn',outputFcn);
+
 end
 
-%% Execucao
+%% Execução principal
 
 rng(seed);
 
 [P,C] = ga( ...
-    fcusto,2,[],[], ...
-    [1 1],D,Pmin,ub,[],opts);
+    fcusto,...
+    2,...
+    [],[],...
+    [1 1],D,...
+    Pmin,ub,...
+    [],opts);
 
-%% Custos marginais
+%% Custos incrementais
 
 lambda = b + 2*c.*P;
 
@@ -77,33 +84,30 @@ if isempty(extraLimit)
 else
 
     gerador = extraLimit(1);
-    outro = 3 - gerador;
 
     if abs(P(gerador)-ub(gerador)) < 1e-8
-        lambdaSystem = lambda(outro);
+
+        lambdaSystem = lambda(3-gerador);
+
     else
+
         lambdaSystem = lambda(1);
+
     end
 
 end
 
-%% Resultados
-
-r.P = P;
-r.C = C;
-r.lambda = lambda;
-r.lambdaSystem = lambdaSystem;
-
-%% Estatistica
+%% Estudo estatístico (10 execuções)
 
 nexec = 10;
 
 R = zeros(nexec,1);
+
 P10 = zeros(nexec,2);
 
 opts10 = optimoptions('ga', ...
-    'PopulationSize',popSize, ...
-    'MaxGenerations',maxGen, ...
+    'PopulationSize',popSize,...
+    'MaxGenerations',maxGen,...
     'Display','off');
 
 for k = 1:nexec
@@ -111,24 +115,46 @@ for k = 1:nexec
     rng(k);
 
     [Pk,Ck] = ga( ...
-        fcusto,2,[],[], ...
-        [1 1],D,Pmin,ub,[],opts10);
+        fcusto,...
+        2,...
+        [],[],...
+        [1 1],D,...
+        Pmin,ub,...
+        [],opts10);
 
     P10(k,:) = Pk;
+
     R(k) = Ck;
 
 end
 
-%% Resultados estatisticos
-
-r.P10 = P10;
-r.R = R;
+%% Estatísticas
 
 r.melhor = min(R);
+
 r.media = mean(R);
+
 r.pior = max(R);
 
-%% Tabela
+r.desvioPadrao = std(R);
+
+r.variancia = var(R);
+
+%% Resultados
+
+r.P = P;
+
+r.C = C;
+
+r.lambda = lambda;
+
+r.lambdaSystem = lambdaSystem;
+
+r.P10 = P10;
+
+r.R = R;
+
+%% Tabela das execuções
 
 r.tabela10 = table( ...
     (1:nexec)', ...

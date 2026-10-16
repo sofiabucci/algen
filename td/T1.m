@@ -1,58 +1,104 @@
 function r = T1(b,c,D,popSize,maxGen,seed)
 % T1
-% Despacho economico.
+% Despacho económico sem restrições adicionais.
+%
+% Compara:
+%   - Método de Lagrange
+%   - Algoritmo Genético
+%
+% Efetua ainda o estudo estatístico
+% de 10 execuções do GA.
+
+%% Valores por defeito
+
+if nargin == 0
+
+    d = dados_grupo12();
+
+    b = d.b;
+    c = d.c;
+    D = d.D;
+
+    popSize = 50;
+    maxGen = 100;
+    seed = 1;
+
+end
 
 %% Limites
 
-Pmin = [0.10 0.10];
-Pmax = [1.00 1.00];
+d = dados_grupo12();
 
-%% Validacao
+Pmin = d.Pmin;
+Pmax = d.Pmax;
+
+%% Validação
 
 if D < sum(Pmin)
-    error('T1: carga inferior a potencia minima total.');
+
+    error('Carga inferior à potência mínima total.');
+
 end
 
 if D > sum(Pmax)
-    error('T1: carga superior a potencia maxima total.');
+
+    error('Carga superior à potência máxima total.');
+
 end
 
-%% Lagrange
+%% Resolução por Lagrange
 
 L = Lagrange( ...
-    b,c,D,Pmin,Pmax,[]);
+    b,c,D,...
+    Pmin,Pmax,...
+    []);
 
-%% GA
+%% Resolução por GA
 
 G = GA( ...
-    b,c,D,popSize,maxGen,seed,Pmin,Pmax,[]);
+    b,c,D,...
+    popSize,maxGen,seed,...
+    Pmin,Pmax,...
+    []);
 
-%% Resultados Lagrange
+%% Estrutura de resultados
 
-r.P_L = L.P;
-r.C_L = L.C;
-r.lambda_L = L.lambda;
-r.lambdaSystem_L = L.lambdaSystem;
+r.Lagrange = L;
 
-%% Resultados GA
-
-r.P_GA = G.P;
-r.C_GA = G.C;
-r.lambda_GA = G.lambda;
-r.lambdaSystem_GA = G.lambdaSystem;
-
-%% Estatistica
-
-r.P_resultados = G.P10;
-r.R = G.R;
-
-r.melhor = G.melhor;
-r.media = G.media;
-r.pior = G.pior;
+r.GA = G;
 
 r.tabela10 = G.tabela10;
 
-%% Comparacao
+%% Comparação
+
+r.erroPotencia = norm(L.P-G.P);
+
+r.erroCusto = abs(L.C-G.C);
+
+r.erroRelativoPercent = ...
+    100*abs(L.C-G.C)/L.C;
+
+%% Estatísticas do GA
+
+r.melhor = G.melhor;
+
+r.media = G.media;
+
+r.pior = G.pior;
+
+r.desvioPadrao = G.desvioPadrao;
+
+%% Tabela estatística
+
+r.tabelaEstatistica = table( ...
+    G.melhor,...
+    G.media,...
+    G.pior,...
+    G.desvioPadrao,...
+    'VariableNames', ...
+    {'Melhor','Media','Pior','DesvioPadrao'});
+
+%% Tabela comparativa
 
 r.tabelaComparacao = table( ...
     [L.P(1);G.P(1)], ...
@@ -62,6 +108,36 @@ r.tabelaComparacao = table( ...
     'RowNames', ...
     {'Lagrange','GA'}, ...
     'VariableNames', ...
-    {'P1','P2','Custo','LambdaSistema'});
+    {'P1','P2','Custo','Lambda'});
+
+%% Tabela de erros
+
+r.tabelaErros = table( ...
+    r.erroPotencia,...
+    r.erroCusto,...
+    r.erroRelativoPercent,...
+    'VariableNames', ...
+    {'ErroPotencia',...
+     'ErroCusto',...
+     'ErroRelativoPercent'});
+
+%% Apresentação
+
+fprintf('\n');
+fprintf('====================================\n');
+fprintf('T1 - DESPACHO ECONOMICO\n');
+fprintf('====================================\n');
+
+disp(r.tabelaComparacao);
+
+fprintf('\n');
+disp(r.tabelaErros);
+
+fprintf('\nESTUDO ESTATISTICO (10 EXECUCOES)\n');
+
+fprintf('Melhor custo  : %.6f\n',G.melhor);
+fprintf('Media custo   : %.6f\n',G.media);
+fprintf('Pior custo    : %.6f\n',G.pior);
+fprintf('Desvio padrao : %.6f\n',G.desvioPadrao);
 
 end
