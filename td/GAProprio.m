@@ -233,6 +233,7 @@ end
 
 function individuo = reparar( ...
     individuo,D,Pmin,Pmax)
+
 % REPARACAO DE LIMITES
 
 P1 = individuo(1);
